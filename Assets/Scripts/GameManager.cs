@@ -40,14 +40,20 @@ public class GameManager : MonoBehaviour
     public Transform playerHandArea;
     public Transform enemyHandArea;
     public Slider EnemySlider;
+    public Slider EnemySliderNegative;
     public Slider PlayerSlider;
 
     public GameObject ShuZi;
 
     public GameObject Enemymodle;
 
+    public Transform NumAppear;
+
     [Header("卡牌预制体")]
     public GameObject cardPrefab;
+
+    [Header("数字预制体")]
+    public GameObject numberPrefab;
 
     [Header("卡牌数据")]
     public CardData[] availableCards;
@@ -55,6 +61,7 @@ public class GameManager : MonoBehaviour
     private List<GameObject> playerHand = new List<GameObject>();
     private List<GameObject> enemyHand = new List<GameObject>();
     private int turnNumber = 1;
+    private int currentCardIndex = 0; // 当前抽卡索引
 
     public static GameManager Instance { get; private set; }
 
@@ -82,6 +89,7 @@ public class GameManager : MonoBehaviour
         enemyHealth = enemyMaxHealth;
         turnNumber = 1;
         currentState = GameState.PlayerTurn;
+        currentCardIndex = 0; // 重置抽卡索引
 
         UpdateUI();
         StartNewTurn();
@@ -114,13 +122,27 @@ public class GameManager : MonoBehaviour
     {
         for (int i = 0; i < count; i++)
         {
-            if (playerHand.Count < 10) // 手牌上限
+            if (playerHand.Count < 10 && currentCardIndex < availableCards.Length) // 手牌上限且还有卡牌可抽
             {
-                CardData randomCard = availableCards[Random.Range(0, availableCards.Length)];
+                // 按顺序获取卡牌数据
+                CardData nextCard = availableCards[currentCardIndex];
                 GameObject newCard = Instantiate(cardPrefab, playerHandArea);
                 CardDisplay cardDisplay = newCard.GetComponent<CardDisplay>();
-                cardDisplay.Initialize(randomCard);
+                cardDisplay.Initialize(nextCard);
                 playerHand.Add(newCard);
+
+                // 更新索引，循环到卡牌数据库开头
+                currentCardIndex++;
+                if (currentCardIndex >= availableCards.Length)
+                {
+                    currentCardIndex = 0; // 循环到第一张卡牌
+                }
+
+                Debug.Log($"抽到卡牌: {nextCard.cardName} (索引: {currentCardIndex - 1})");
+            }
+            else if (currentCardIndex >= availableCards.Length)
+            {
+                Debug.LogWarning("没有更多卡牌可抽");
             }
         }
     }
@@ -156,7 +178,7 @@ public class GameManager : MonoBehaviour
         else
         {
             // 直接攻击
-            playerHealth -= 2;
+            playerHealth -= 5;
             Enemymodle.GetComponent<Animator>().SetTrigger("attack");
         }
 
@@ -182,10 +204,11 @@ public class GameManager : MonoBehaviour
     public void UpdateUI()
     {
         playerHealthText.text = "玩家: " + playerHealth + "/" + playerMaxHealth;
-        PlayerSlider.value = playerHealth/ playerMaxHealth;
+        PlayerSlider.value = playerHealth / playerMaxHealth;
         enemyHealthText.text = enemyHealth.ToString();
-        Debug.Log(enemyHealth+enemyMaxHealth);
-        EnemySlider.value = enemyHealth/ enemyMaxHealth;
+        Debug.Log(enemyHealth + enemyMaxHealth);
+        EnemySlider.value = enemyHealth / enemyMaxHealth;
+        EnemySliderNegative.value = -enemyHealth / enemyMaxHealth;
         manaText.text = "法力: " + playerMana + "/" + playerMaxMana;
     }
 
@@ -223,6 +246,7 @@ public class GameManager : MonoBehaviour
             // 治疗卡牌显示 + 号
             ShuZi.SetActive(true);
             ShuZi.GetComponent<Text>().text = "+" + cardDisplay.cardData.value.ToString();
+            SplitFloatToDigits(cardDisplay.cardData.value, CardType.Heal); // 明确传递CardType.Heal
             StartCoroutine(HideNumberAfterDelay(0.5f));
         }
         else // Damage
@@ -242,6 +266,7 @@ public class GameManager : MonoBehaviour
             // 伤害卡牌显示 - 号
             ShuZi.SetActive(true);
             ShuZi.GetComponent<Text>().text = "-" + cardDisplay.cardData.value.ToString();
+            SplitFloatToDigits(cardDisplay.cardData.value, CardType.Damage); // 明确传递CardType.Damage
             StartCoroutine(HideNumberAfterDelay(0.5f));
         }
 
@@ -264,7 +289,7 @@ public class GameManager : MonoBehaviour
             turnText.text = "游戏结束! 敌人胜利!";
             nextTurnButton.interactable = false;
         }
-        else if (enemyHealth <= 0)
+        else if (enemyHealth == 0)
         {
             currentState = GameState.GameOver;
             turnText.text = "游戏结束! 玩家胜利!";
@@ -272,4 +297,99 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public string[] SplitFloatToDigits(float value, CardType cardType)
+    {
+        List<string> digits = new List<string>();
+
+        // 根据卡牌类型添加符号
+        if (cardType == CardType.Heal)
+        {
+            digits.Add("+"); // 治疗卡牌显示+号
+        }
+        else if (cardType == CardType.Damage)
+        {
+            digits.Add("-"); // 伤害卡牌显示-号
+        }
+
+        // 将数值部分转换为字符串（取绝对值）
+        string numberString = Mathf.Abs(value).ToString();
+
+        foreach (char c in numberString)
+        {
+            // 处理小数点
+            if (c == '.')
+            {
+                digits.Add(".");
+            }
+            // 处理数字
+            else if (char.IsDigit(c))
+            {
+                digits.Add(c.ToString());
+            }
+        }
+
+        // 在NumAppear位置生成数字预制体
+        GenerateNumberPrefabs(digits);
+
+        return digits.ToArray();
+    }
+    private void GenerateNumberPrefabs(List<string> digits)
+    {
+        if (NumAppear == null)
+        {
+            Debug.LogError("NumAppear未分配！");
+            return;
+        }
+
+        if (numberPrefab == null)
+        {
+            Debug.LogError("数字预制体未分配！");
+            return;
+        }
+
+        // 先清空现有的数字
+        foreach (Transform child in NumAppear)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // 生成新的数字预制体
+        for (int i = 0; i < digits.Count; i++)
+        {
+            // 实例化预制体
+            GameObject numberObj = Instantiate(numberPrefab, NumAppear);
+            numberObj.name = $"Number_{i}_{digits[i]}";
+
+            // 获取Text组件并设置文本
+            Text textComponent = numberObj.GetComponent<Text>();
+            if (textComponent != null)
+            {
+                textComponent.text = digits[i];
+
+                /*                // 根据字符类型设置颜色
+                                if (digits[i] == "-")
+                                {
+                                    textComponent.color = Color.red;
+                                }
+                                else if (digits[i] == "+")
+                                {
+                                    textComponent.color = Color.green;
+                                }
+                                else if (digits[i] == ".")
+                                {
+                                    textComponent.color = Color.gray;
+                                }
+                                else
+                                {
+                                    textComponent.color = Color.white;
+                                }*/
+            }
+
+            // 设置位置（水平排列）
+            RectTransform rectTransform = numberObj.GetComponent<RectTransform>();
+            rectTransform.anchoredPosition = new Vector2(i * 35, 0);
+
+            Debug.Log($"生成数字预制体: {digits[i]} 在位置 {i}");
+        }
+    }
 }
