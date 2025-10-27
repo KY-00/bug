@@ -58,6 +58,9 @@ public class GameManager : MonoBehaviour
     [Header("卡牌数据")]
     public CardData[] availableCards;
 
+    public Animator nowNum;
+    public GameObject nextlevel;
+
     private List<GameObject> playerHand = new List<GameObject>();
     private List<GameObject> enemyHand = new List<GameObject>();
     private int turnNumber = 1;
@@ -261,6 +264,7 @@ public class GameManager : MonoBehaviour
                 enemyHealth -= cardDisplay.cardData.value;
                 Debug.Log($"敌人受到 {cardDisplay.cardData.value} 点伤害");
                 Enemymodle.GetComponent<Animator>().SetTrigger("hit");
+                nowNum.SetTrigger("attack");
             }
 
             // 伤害卡牌显示 - 号
@@ -289,11 +293,13 @@ public class GameManager : MonoBehaviour
             turnText.text = "游戏结束! 敌人胜利!";
             nextTurnButton.interactable = false;
         }
-        else if (enemyHealth == 0)
+        if (enemyHealth == 0)
         {
             currentState = GameState.GameOver;
             turnText.text = "游戏结束! 玩家胜利!";
             nextTurnButton.interactable = false;
+            Enemymodle.GetComponent<Animator>().SetTrigger("lose");
+            nextlevel.SetActive(true);
         }
     }
 

@@ -141,6 +141,7 @@ public class CardDisplay : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
             lineRenderer.SetPosition(0, startPosition);
             lineRenderer.SetPosition(1, transform.position);
         }
+
     }
 
     public void OnEndDrag(PointerEventData eventData)
