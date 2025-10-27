@@ -481,6 +481,7 @@ GameObject:
   - component: {fileID: -211329605804946654}
   - component: {fileID: 5135611694589233704}
   - component: {fileID: -6039500990356212725}
+  - component: {fileID: 6711077007095793766}
   m_Layer: 5
   m_Name: AttackCard
   m_TagString: Untagged
@@ -655,6 +656,27 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
+--- !u!95 &6711077007095793766
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6874419177936504394}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: e0911f1e2119d9a4fbbdb1a2f1f0a724, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &8907304728047442206
 GameObject:
   m_ObjectHideFlags: 0
