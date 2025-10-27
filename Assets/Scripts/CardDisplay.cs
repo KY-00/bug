@@ -47,6 +47,9 @@ public class CardDisplay : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
 
         // 检查UI组件引用
         CheckUIComponents();
+
+        // 初始化特效状态
+        InitializeEffects();
     }
 
     void InitializeLineRenderer()
@@ -75,6 +78,19 @@ public class CardDisplay : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
         if (artworkImage == null) Debug.LogError("Artwork Image未分配!");
     }
 
+    // 初始化特效
+    void InitializeEffects()
+    {
+        if (GameManager.Instance. playerEffect != null)
+        {
+            GameManager.Instance.playerEffect.SetActive(false);
+        }
+        if (GameManager.Instance.enemyEffect != null)
+        {
+            GameManager.Instance.enemyEffect.SetActive(false);
+        }
+    }
+
     public void Initialize(CardData data)
     {
         cardData = data;
@@ -92,18 +108,22 @@ public class CardDisplay : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
         }
     }
 
-
     public void OnBeginDrag(PointerEventData eventData)
     {
-
         isDragging = true;
         startPosition = transform.position;
         originalParent = transform.parent;
 
+        // 开始拖动时隐藏所有特效
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.HideAllEffects();
+            Debug.Log("开始拖动，隐藏所有特效");
+        }
+
         // 设置CanvasGroup属性以便拖动
         if (canvasGroup != null)
         {
-           // canvasGroup.alpha = 0.6f;
             canvasGroup.blocksRaycasts = false;
         }
 
@@ -142,6 +162,8 @@ public class CardDisplay : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
             lineRenderer.SetPosition(1, transform.position);
         }
 
+        // 检测是否在目标区域并显示相应特效
+        CheckTargetAreaAndShowEffect();
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -162,10 +184,123 @@ public class CardDisplay : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
             lineRenderer.enabled = false;
         }
 
+        // 隐藏所有特效
+        HideAllEffects();
+
         // 检测释放目标
         CheckDropTarget(eventData);
     }
 
+    // 检测目标区域并显示特效
+    private void CheckTargetAreaAndShowEffect()
+    {
+        if (!isDragging) return;
+
+        // 添加详细的调试信息
+        Debug.Log("=== 开始检测目标区域 ===");
+
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("GameManager.Instance 为 null!");
+            return;
+        }
+
+        // 检查特效是否分配
+        GameManager.Instance.AreEffectsAssigned();
+
+        // 使用EventSystem检测UI目标
+        PointerEventData pointerData = new PointerEventData(EventSystem.current)
+        {
+            position = Input.mousePosition
+        };
+
+        List<RaycastResult> results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(pointerData, results);
+
+        bool isOverPlayer = false;
+        bool isOverEnemy = false;
+
+        Debug.Log($"检测到 {results.Count} 个UI对象");
+
+        foreach (RaycastResult result in results)
+        {
+            Debug.Log($"检测到对象: {result.gameObject.name}, Tag: {result.gameObject.tag}");
+
+            if (result.gameObject.CompareTag("Player"))
+            {
+                isOverPlayer = true;
+                Debug.Log("检测到玩家区域");
+                break;
+            }
+            else if (result.gameObject.CompareTag("Enemy"))
+            {
+                isOverEnemy = true;
+                Debug.Log("检测到敌人区域");
+                break;
+            }
+        }
+
+        // 根据检测结果显示/隐藏特效
+        if (isOverPlayer)
+        {
+            Debug.Log("显示玩家特效");
+            GameManager.Instance.ShowPlayerEffect();
+        }
+        else if (isOverEnemy)
+        {
+            Debug.Log("显示敌人特效");
+            GameManager.Instance.ShowEnemyEffect();
+        }
+        else
+        {
+            Debug.Log("不在目标区域，隐藏特效");
+            GameManager.Instance.HideAllEffects();
+        }
+    }
+
+    // 显示玩家区域特效
+    private void ShowPlayerEffect()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.playerEffect != null)
+        {
+            GameManager.Instance.playerEffect.SetActive(true);
+            Debug.Log("显示玩家特效");
+        }
+        if (GameManager.Instance != null && GameManager.Instance.enemyEffect != null)
+        {
+            GameManager.Instance.enemyEffect.SetActive(false);
+        }
+    }
+
+    // 显示敌人区域特效
+    private void ShowEnemyEffect()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.enemyEffect != null)
+        {
+            GameManager.Instance.enemyEffect.SetActive(true);
+            Debug.Log("显示敌人特效");
+        }
+        if (GameManager.Instance != null && GameManager.Instance.playerEffect != null)
+        {
+            GameManager.Instance.playerEffect.SetActive(false);
+        }
+    }
+
+    // 隐藏所有特效
+    private void HideAllEffects()
+    {
+        if (GameManager.Instance != null)
+        {
+            if (GameManager.Instance.playerEffect != null)
+            {
+                GameManager.Instance.playerEffect.SetActive(false);
+            }
+            if (GameManager.Instance.enemyEffect != null)
+            {
+                GameManager.Instance.enemyEffect.SetActive(false);
+            }
+        }
+    }
     void CheckDropTarget(PointerEventData eventData)
     {
         // 使用EventSystem检测UI目标
@@ -183,11 +318,11 @@ public class CardDisplay : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
                 // 检查目标是否合理
                 //if (IsValidTarget(targetIsPlayer))
                 //{
-                    validTargetFound = true;
-                   // GameManager.Instance.SpendMana(cardData.manaCost);
-                    GameManager.Instance.PlayCard(gameObject, targetIsPlayer);
-                    return;
-              //  }
+                validTargetFound = true;
+                // GameManager.Instance.SpendMana(cardData.manaCost);
+                GameManager.Instance.PlayCard(gameObject, targetIsPlayer);
+                return;
+                //  }
             }
         }
 
@@ -220,6 +355,9 @@ public class CardDisplay : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
         transform.position = startPosition;
         transform.SetParent(originalParent);
     }
+
+   
+    
     public string[] SplitFloatToDigits(float value)
     {
         // 将float转换为字符串，保留小数部分

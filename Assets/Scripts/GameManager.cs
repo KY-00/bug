@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public enum GameState
@@ -34,7 +36,6 @@ public class GameManager : MonoBehaviour
     [Header("UI引用")]
     public Text playerHealthText;
     public Text enemyHealthText;
-    public Text manaText;
     public Text turnText;
     public Button nextTurnButton;
     public Transform playerHandArea;
@@ -67,6 +68,8 @@ public class GameManager : MonoBehaviour
     private int currentCardIndex = 0; // 当前抽卡索引
 
     public static GameManager Instance { get; private set; }
+    public GameObject playerEffect; // 玩家区域特效
+    public GameObject enemyEffect;  // 敌人区域特效
 
     void Awake()
     {
@@ -78,8 +81,17 @@ public class GameManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
-    }
 
+        // 初始化特效
+        InitializeEffects();
+    }
+   void InitializeEffects()
+    {
+        if (playerEffect != null)
+            playerEffect.SetActive(false);
+        if (enemyEffect != null)
+            enemyEffect.SetActive(false);
+    }
     void Start()
     {
         InitializeGame();
@@ -90,7 +102,7 @@ public class GameManager : MonoBehaviour
     {
         playerHealth = playerMaxHealth;
         enemyHealth = enemyMaxHealth;
-        turnNumber = 1;
+        turnNumber = 0;
         currentState = GameState.PlayerTurn;
         currentCardIndex = 0; // 重置抽卡索引
 
@@ -100,10 +112,11 @@ public class GameManager : MonoBehaviour
 
     public void StartNewTurn()
     {
-        turnNumber++;
+        //turnNumber++;
 
         if (currentState == GameState.PlayerTurn)
         {
+            turnNumber++;
             // 玩家回合开始
             playerMana = Mathf.Min(playerMaxMana, playerMana + 1);
             DrawCardsForPlayer(1);
@@ -206,13 +219,13 @@ public class GameManager : MonoBehaviour
 
     public void UpdateUI()
     {
-        playerHealthText.text = "玩家: " + playerHealth + "/" + playerMaxHealth;
+        playerHealthText.text = playerHealth + "/" + playerMaxHealth;
         PlayerSlider.value = playerHealth / playerMaxHealth;
         enemyHealthText.text = enemyHealth.ToString();
         Debug.Log(enemyHealth + enemyMaxHealth);
         EnemySlider.value = enemyHealth / enemyMaxHealth;
         EnemySliderNegative.value = -enemyHealth / enemyMaxHealth;
-        manaText.text = "法力: " + playerMana + "/" + playerMaxMana;
+    
     }
 
     public bool CanPlayCard(int manaCost)
@@ -353,49 +366,89 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // 先清空现有的数字
-        foreach (Transform child in NumAppear)
-        {
-            Destroy(child.gameObject);
-        }
+        // 不再清除现有的数字预制体，而是在现有基础上添加新的数字
+        // 注释掉或删除这行代码：
+        // foreach (Transform child in NumAppear) { Destroy(child.gameObject); }
 
-        // 生成新的数字预制体
+        // 获取当前已有的数字预制体数量
+        int existingCount = NumAppear.childCount;
+
+        // 生成新的数字预制体，从现有数量之后开始
         for (int i = 0; i < digits.Count; i++)
         {
             // 实例化预制体
             GameObject numberObj = Instantiate(numberPrefab, NumAppear);
-            numberObj.name = $"Number_{i}_{digits[i]}";
+            numberObj.name = $"Number_{existingCount + i}_{digits[i]}";
 
             // 获取Text组件并设置文本
             Text textComponent = numberObj.GetComponent<Text>();
             if (textComponent != null)
             {
                 textComponent.text = digits[i];
-
-                /*                // 根据字符类型设置颜色
-                                if (digits[i] == "-")
-                                {
-                                    textComponent.color = Color.red;
-                                }
-                                else if (digits[i] == "+")
-                                {
-                                    textComponent.color = Color.green;
-                                }
-                                else if (digits[i] == ".")
-                                {
-                                    textComponent.color = Color.gray;
-                                }
-                                else
-                                {
-                                    textComponent.color = Color.white;
-                                }*/
             }
 
-            // 设置位置（水平排列）
+            // 设置位置（水平排列），考虑已有数字的位置
             RectTransform rectTransform = numberObj.GetComponent<RectTransform>();
-            rectTransform.anchoredPosition = new Vector2(i * 35, 0);
+            rectTransform.anchoredPosition = new Vector2((existingCount + i) * 35, 0);
 
-            Debug.Log($"生成数字预制体: {digits[i]} 在位置 {i}");
+            Debug.Log($"生成数字预制体: {digits[i]} 在位置 {existingCount + i} (已有 {existingCount} 个数字)");
         }
+    }
+    public void ShowPlayerEffect()
+    {
+        if (playerEffect != null)
+        {
+            playerEffect.SetActive(true);
+            Debug.Log("显示玩家特效");
+        }
+        else
+        {
+            Debug.LogWarning("playerEffect 未分配！");
+        }
+    }
+
+    public void ShowEnemyEffect()
+    {
+        if (enemyEffect != null)
+        {
+            enemyEffect.SetActive(true);
+            Debug.Log("显示敌人特效");
+        }
+        else
+        {
+            Debug.LogWarning("enemyEffect 未分配！");
+        }
+    }
+
+    public void HideAllEffects()
+    {
+        if (playerEffect != null)
+        {
+            playerEffect.SetActive(false);
+        }
+        if (enemyEffect != null)
+        {
+            enemyEffect.SetActive(false);
+        }
+        Debug.Log("隐藏所有特效");
+    }
+
+    // 检查特效是否已分配
+    public bool AreEffectsAssigned()
+    {
+        bool playerAssigned = playerEffect != null;
+        bool enemyAssigned = enemyEffect != null;
+
+        Debug.Log($"玩家特效分配: {playerAssigned}, 敌人特效分配: {enemyAssigned}");
+        return playerAssigned && enemyAssigned;
+    }
+    // 重新加载当前场景
+    public void ReloadCurrentScene()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+    public void LoadSceneByName(string sceneName)
+    {
+        SceneManager.LoadScene(sceneName);
     }
 }
