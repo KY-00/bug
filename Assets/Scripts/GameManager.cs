@@ -70,6 +70,11 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
     public GameObject playerEffect; // 玩家区域特效
     public GameObject enemyEffect;  // 敌人区域特效
+    public AudioSource audioSource;
+    public AudioClip Victory;
+    public AudioClip Fail;
+    public AudioClip Recover;
+    public AudioClip Attack;
 
     void Awake()
     {
@@ -85,7 +90,7 @@ public class GameManager : MonoBehaviour
         // 初始化特效
         InitializeEffects();
     }
-   void InitializeEffects()
+    void InitializeEffects()
     {
         if (playerEffect != null)
             playerEffect.SetActive(false);
@@ -180,12 +185,14 @@ public class GameManager : MonoBehaviour
             {
                 // 敌人治疗自己
                 enemyHealth = Mathf.Min(enemyMaxHealth, enemyHealth + cardDisplay.cardData.value);
+                audioSource.PlayOneShot(Recover);
             }
             else
             {
                 // 敌人攻击玩家
                 playerHealth -= cardDisplay.cardData.value;
                 Enemymodle.GetComponent<Animator>().SetTrigger("attack");
+                audioSource.PlayOneShot(Attack);
             }
 
             enemyHand.Remove(cardToUse);
@@ -196,6 +203,7 @@ public class GameManager : MonoBehaviour
             // 直接攻击
             playerHealth -= 5;
             Enemymodle.GetComponent<Animator>().SetTrigger("attack");
+            audioSource.PlayOneShot(Attack);
         }
 
         UpdateUI();
@@ -225,7 +233,7 @@ public class GameManager : MonoBehaviour
         Debug.Log(enemyHealth + enemyMaxHealth);
         EnemySlider.value = enemyHealth / enemyMaxHealth;
         EnemySliderNegative.value = -enemyHealth / enemyMaxHealth;
-    
+
     }
 
     public bool CanPlayCard(int manaCost)
@@ -251,11 +259,13 @@ public class GameManager : MonoBehaviour
             if (targetIsPlayer)
             {
                 playerHealth = Mathf.Min(playerMaxHealth, playerHealth + cardDisplay.cardData.value);
+                audioSource.PlayOneShot(Recover);
                 Debug.Log($"玩家恢复 {cardDisplay.cardData.value} 点生命值");
             }
             else
             {
                 enemyHealth = Mathf.Min(enemyMaxHealth, enemyHealth + cardDisplay.cardData.value);
+                audioSource.PlayOneShot(Recover);
                 Debug.Log($"敌人恢复 {cardDisplay.cardData.value} 点生命值");
             }
 
@@ -270,11 +280,13 @@ public class GameManager : MonoBehaviour
             if (targetIsPlayer)
             {
                 playerHealth -= cardDisplay.cardData.value;
+                audioSource.PlayOneShot(Attack);
                 Debug.Log($"玩家受到 {cardDisplay.cardData.value} 点伤害");
             }
             else
             {
                 enemyHealth -= cardDisplay.cardData.value;
+                audioSource.PlayOneShot(Attack);
                 Debug.Log($"敌人受到 {cardDisplay.cardData.value} 点伤害");
                 Enemymodle.GetComponent<Animator>().SetTrigger("hit");
                 nowNum.SetTrigger("attack");
@@ -303,12 +315,14 @@ public class GameManager : MonoBehaviour
         if (playerHealth <= 0)
         {
             currentState = GameState.GameOver;
+            audioSource.PlayOneShot(Fail);
             turnText.text = "游戏结束! 敌人胜利!";
             nextTurnButton.interactable = false;
         }
         if (enemyHealth == 0)
         {
             currentState = GameState.GameOver;
+            audioSource.PlayOneShot(Victory);
             turnText.text = "游戏结束! 玩家胜利!";
             nextTurnButton.interactable = false;
             Enemymodle.GetComponent<Animator>().SetTrigger("lose");
